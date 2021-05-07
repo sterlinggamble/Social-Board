@@ -26,6 +26,7 @@ class HomeViewController: UIViewController {
     var topics = [Topic]()
     var content = [Any]()
     let api = TwitterAPI()
+    let redditAPI = RedditAPI()
     
     // dictionary of tweets and reddit posts
     // each topic has a set of content ids
@@ -51,12 +52,13 @@ class HomeViewController: UIViewController {
         tableView.backgroundColor = .white
         tableView.rowHeight = UITableView.automaticDimension
         tableView.register(TweetCell.self, forCellReuseIdentifier: "TweetCell")
+        tableView.register(RedditPostCell.self, forCellReuseIdentifier: "RedditPostCell")
         view.addSubview(tableView)
         
         tableView.isHidden = true
         
         topics.append(Topic(title: "All"))
-//        test()
+        
         loadData()
     }
     
@@ -111,10 +113,20 @@ class HomeViewController: UIViewController {
                             }
                         }
                     }
+                    if let redditMOs = topic.redditPosts as? Set<RedditPostMO> {
+                        for redditMO in redditMOs {
+                            group.enter()
+                            self.redditAPI.postData(postID: redditMO.id!) { post in
+                                self.content.append(post)
+                                group.leave()
+                            }
+                        }
+                    }
                 }
             }
             
             group.notify(queue: .main) {
+                print("Content Count: \(self.content.count)")
                 self.collectionView.reloadData()
                 self.test()
             }
@@ -126,25 +138,10 @@ class HomeViewController: UIViewController {
         topics.append(Topic(title: "Finance"))
         topics.append(Topic(title: "Politics"))
         
-//        api.fetchAccessToken {
-//            self.api.retweeters(id: 1382390104124239874, count: 1) { (data) in
-//                self.api.favoriteList(userID: data[0], count: 5) { (tweets) in
-//                    self.content += tweets
-//
-//                    DispatchQueue.main.async {
-//                        self.tableView.reloadData()
-//                        self.tableView.isHidden = false
-//                    }
-//                }
-//            }
-//        }
-        
         let recommender = Recommender()
         recommender.run(content: content) { (recommendations) in
             self.content += recommendations
-            
-            // resort recommendations
-            
+                        
             DispatchQueue.main.async {
                 self.tableView.reloadData()
                 self.tableView.isHidden = false
@@ -212,6 +209,10 @@ extension HomeViewController: UITableViewDelegate, UITableViewDataSource {
             let cell = tableView.dequeueReusableCell(withIdentifier: "TweetCell") as! TweetCell
             cell.configure(tweet: tweet)
             return cell
+        } else if let post = content[indexPath.row] as? RedditPost {
+            let cell = tableView.dequeueReusableCell(withIdentifier: "RedditPostCell") as! RedditPostCell
+            cell.configure(post: post)
+            return cell
         }
         return UITableViewCell()
     }
@@ -224,6 +225,8 @@ extension HomeViewController: UITableViewDelegate, UITableViewDataSource {
         
         if let tweet = content[indexPath.row] as? Tweet {
             label.text = tweet.text
+        } else if let post = content[indexPath.row] as? RedditPost {
+            label.text = post.title
         }
         label.sizeToFit()
         

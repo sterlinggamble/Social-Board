@@ -14,6 +14,14 @@ class Recommender {
     var tweetInteractors = [Int: Set<Int>]() // {user id: tweet id}
     var tweetAuthors = Set<Int>() // author ids
     
+    let redditAPI = RedditAPI()
+    var redditPosts = [String: RedditPost]()
+    var redditUsers = Set<String>()
+    var subreddits = Set<String>()
+    var redditIDs = [String]()
+    var favRedditIDs = Set<String>()
+    var seedRedditPostCount = 0
+    
     // filtering data
     var favTweetIDs = Set<Int>()
     var tweetIDs = [Int]()
@@ -22,7 +30,7 @@ class Recommender {
     var seedTwitterUsers = [Int: Set<Int>]() // tracks where a canidate user came from
     
     func run(content: [Any], completion: @escaping ([Any]) -> Void) {
-        
+        print("running recommender")
         // Data Collection and Preparation
         fetchUsers(content: content) {
             self.fetchData {
@@ -45,6 +53,7 @@ class Recommender {
     }
     
     func fetchUsers(content: [Any], completion: @escaping () -> Void) {
+        print("fetching users")
         let group = DispatchGroup()
         for post in content {
             group.enter()
@@ -76,6 +85,20 @@ class Recommender {
                     group.leave()
                 }
                 
+            } else if let post = post as? RedditPost {
+                redditPosts[post.id!] = post
+                redditUsers.insert(post.author!)
+                redditIDs.append(post.id!)
+                favRedditIDs.insert(post.id!)
+                subreddits.insert(post.subreddit!)
+                seedRedditPostCount += 1
+                group.leave()
+//                // get commenters
+//                redditAPI.postData(postID: post.id!) { data in
+//
+//                }
+                
+                
             }
         }
         group.notify(queue: .global()) {
@@ -84,6 +107,7 @@ class Recommender {
     }
     
     func fetchData(completion: @escaping () -> Void) {
+        print("fetching data")
         let group = DispatchGroup()
         // for each tweet author get their /user_timeline
         for author in tweetAuthors {
@@ -111,7 +135,7 @@ class Recommender {
                 let tweetIDs = [Int]()
                 for tweet in tweets {
                     self.tweets[tweet.id!] = tweet
-                    self.tweetIDs.append(tweet.id!)
+                    self.tweetIDs.append(tweet.id!) // WARNING: Might cause duplicates
                     
                     // for content based filtering
                     // store from which tweet(s) did the current candidate tweet came from
@@ -131,13 +155,47 @@ class Recommender {
             }
         }
         
+        print("fetching reddit user posts")
+        for username in redditUsers {
+            group.enter()
+            redditAPI.userPosts(username: username) { posts in
+                for post in posts {
+                    if self.redditPosts[post.id!] == nil {
+                        self.redditPosts[post.id!] = post
+                        self.redditIDs.append(post.id!)
+                    }
+                    
+                }
+                
+                group.leave()
+            }
+        }
+        
+        print("fetching subreddit posts")
+        for subreddit in subreddits {
+            group.enter()
+            redditAPI.subredditPosts(subreddit: subreddit) { posts in
+                for post in posts {
+                    if self.redditPosts[post.id!] == nil {
+                        self.redditPosts[post.id!] = post
+                        self.redditIDs.append(post.id!)
+                    }
+                }
+                
+                group.leave()
+            }
+        }
+        
         group.notify(queue: .global()) {
             completion()
         }
     }
     
-    // MARK:= Content Filter
+    // MARK: Content Filter
     func contentBased() {
+        
+        
+        // MARK: Twitter
         var words = [String]()
         var splitTweets = [[String]]()
         let separators = CharacterSet(charactersIn: "./,; ")
@@ -238,9 +296,109 @@ class Recommender {
                 tweets[tweetIDs[j]]?.contentScore = max(score, currentScore ?? 0.0)
             }
         }
+        
+        // MARK: Reddit
+        words.removeAll()
+        var splitPosts = [[String]]()
+        
+        // separate and retrieve all the words from a tweet
+        for (index, id) in redditIDs.enumerated() {
+            var text = redditPosts[id]?.title
+
+            // lower case in order to accurately find similar words
+            text = text?.lowercased()
+            
+            guard let texts = text?.components(separatedBy: separators) else {
+                redditIDs.remove(at: index)
+                continue
+            }
+            words.append(contentsOf: texts)
+            
+            var unqiueText = texts.filter { $0 != "" }
+            for i in 0..<unqiueText.count {
+                unqiueText[i] = unqiueText[i].lowercased()
+            }
+           
+            splitPosts.append(unqiueText)
+        }
+        
+        // remove duplicates
+        unqiueWords.removeAll()
+        for word in words {
+            unqiueWords.insert(word)
+        }
+
+        // remove any empty words
+        for word in unqiueWords {
+            if word.count == 0 {
+                unqiueWords.remove(word)
+            }
+        }
+        
+        // Term Frequency
+        // TF(t) = (Number of times term t appears in a document) / (Total number of terms in the document).
+        print("Calculating Reddit TF")
+        // for each word in the set compute TF for each tweet
+        tfDic.removeAll()
+        for word in unqiueWords {
+            var tfs = [Double]()
+            for post in splitPosts {
+                // count num word appears in tweet
+                var count = 0
+                for val in post {
+                    if val == word {
+                        count += 1
+                    }
+                }
+                let tf = Double(count) / Double(post.count) // calculate tf
+                tfs.append(tf)
+            }
+            tfDic[word] = tfs // add to TF dictionary
+        }
+        print("TF DIC")
+        print(tfDic.count)
+        print(splitPosts.count)
+        print(redditPosts.count)
+        print(redditIDs.count)
+        // Inverse Document Frequency
+        // IDF(t) = log_e(Total number of documents / Number of documents with term t in it).
+        print("Calculating Reddit IDF")
+        idfDic.removeAll()
+        for (term, tfs) in tfDic {
+            var count = 0
+            for tf in tfs {
+                if tf > 0.0 {
+                    count += 1
+                }
+            }
+            idfDic[term] = log(Double(tfs.count)) - log(Double(count))
+        }
+        
+        // TF*IDF Matrix
+        matrix.removeAll()
+        
+        for i in 0..<redditIDs.count {
+            var vectors = [Double]()
+            for word in unqiueWords {
+                let tfs = tfDic[word]!
+                let tfIDF = tfs[i] * idfDic[word]!
+                vectors.append(tfIDF)
+            }
+            matrix.append(vectors)
+        }
+        print("Calculating Reddit cosine similarity")
+        print("Matrix count: \(matrix.count)")
+        // Calculate cosine similarity compared to each seed tweet
+        for i in 0..<seedRedditPostCount {
+            for j in seedRedditPostCount-1..<matrix.count {
+                let score = sim(vectorA: matrix[i], vectorB: matrix[j])
+                let currentScore = redditPosts[redditIDs[j]]?.contentScore
+                redditPosts[redditIDs[j]]?.contentScore = max(score, currentScore ?? 0.0)
+            }
+        }
     }
     
-    // Cosine Similarity Score
+    // MARK: Cosine Similarity Score
     // cos sim = (vector A * vector B) / (sqrt((vector A) * 2) * sqrt((vector A) * 2))
     func sim(vectorA: [Double], vectorB: [Double]) -> Double {
         var top = 0.0
@@ -256,7 +414,7 @@ class Recommender {
         return top / bottom
     }
     
-    // MARK:= Collab Filter
+    // MARK: Collab Filter
     func collabFilter() {
         // rows = user vectors, cols = tweets
         var matrix = Array(repeating: Array(repeating: 0.0, count: tweetIDs.count), count: twitterUserIDs.count)
@@ -304,9 +462,10 @@ class Recommender {
         }
     }
     
-    func getTopResults() -> [Tweet] {
+    // MARK: Results
+    func getTopResults() -> [Any] {
         print("getting results")
-        var recommendations = [Tweet]() // TODO: change to Any
+        var recommendations = [Any]() // TODO: change to Any
         for (id, tweet) in tweets {
             if !favTweetIDs.contains(id) {
                 tweets[id]?.overallScore = (tweet.collabScore ?? 0.0) + (tweet.contentScore ?? 0.0)
@@ -314,17 +473,35 @@ class Recommender {
                     recommendations.append(tweets[id]!)
                 }
             }
-            
-            
         }
-        print("Recommendation Count: \(recommendations.count)")
-        recommendations = recommendations.sorted(by: {$0.overallScore! < $1.overallScore!})
         
-        if recommendations.count < 50 {
+        var num = 0
+        for (id, post) in redditPosts {
+            if !favRedditIDs.contains(id) {
+                redditPosts[id]?.overallScore = (post.collabScore ?? 0.0) + (post.contentScore ?? 0.0)
+                if redditPosts[id]?.overallScore != 0.0 { // exclude non relevant content
+//                    recommendations.append(tweets[id]!)
+                    recommendations.append(redditPosts[id]!)
+                    num += 1
+                }
+            }
+        }
+        print("Reddit Recommendations: \(num)")
+        
+        print("Recommendation Count: \(recommendations.count)")
+//        recommendations = recommendations.sorted(by: {$0.overallScore! < $1.overallScore!})
+        recommendations.sort { post1, post2 in
+            let l = (post1 as? Tweet)?.overallScore ?? (post1 as? RedditPost)?.overallScore
+            let r = (post2 as? Tweet)?.overallScore ?? (post2 as? RedditPost)?.overallScore
+            return l! < r!
+        }
+        
+        
+        if recommendations.count > 50 {
             let slice = recommendations.prefix(50)
-            var topRec = [Tweet]()
-            for tweet in slice {
-                topRec.append(tweet)
+            var topRec = [Any]()
+            for post in slice {
+                topRec.append(post)
             }
             return topRec
         }

@@ -7,10 +7,14 @@
 
 import Foundation
 
-struct RedditPost: Codable {
+struct RedditPost {
     var subreddit: String?
     var selftext: String?
-    var author_fullname: String?
+    var author: String?
     var title: String?
-    var ups: String? // upvotes
+    var id: String?
+    var subredditImg: String?
+    var contentScore: Double? = 0.0
+    var collabScore: Double? = 0.0
+    var overallScore: Double? = 0.0
 }

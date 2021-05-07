@@ -11,4 +11,5 @@ import CoreData
 class TopicMO: NSManagedObject {
     @NSManaged var title: String?
     @NSManaged var tweets: NSSet?
+    @NSManaged var redditPosts: NSSet?
 }

@@ -62,10 +62,9 @@ class AddTopicViewController: UIViewController {
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
     var twitterAPI = TwitterAPI()
+    var redditAPI = RedditAPI()
     
     var content = [Any]()
-    var tweets = [NSManagedObject]()
-    var redditPosts = [NSManagedObject]()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -107,6 +106,7 @@ class AddTopicViewController: UIViewController {
         tableView.backgroundColor = .white
         tableView.rowHeight = UITableView.automaticDimension
         tableView.register(TweetCell.self, forCellReuseIdentifier: "TweetCell")
+        tableView.register(RedditPostCell.self, forCellReuseIdentifier: "RedditPostCell")
         view.addSubview(tableView)
     }
     
@@ -130,7 +130,7 @@ class AddTopicViewController: UIViewController {
             }
             
             var newTweets = [NSObject]()
-//            var newRedditPosts = [NSObject]()
+            var newRedditPosts = [NSObject]()
 
             // create content objects
             for post in content {
@@ -140,14 +140,20 @@ class AddTopicViewController: UIViewController {
                     newTweet.setValue(String(tweet.id!), forKey: "id")
                     newTweets.append(newTweet)
 
-                } else if let _ = post as? RedditPost {
-
+                } else if let post = post as? RedditPost {
+                    let postEntity = NSEntityDescription.entity(forEntityName: "RedditPost", in: context)
+                    let newPost = NSManagedObject(entity: postEntity!, insertInto: context)
+                    newPost.setValue(String(post.id!), forKey: "id")
+                    newRedditPosts.append(newPost)
                 }
             }
             
             // add content relationships
             let tweetsMO = newTopic.mutableSetValue(forKey: "tweets")
             tweetsMO.addObjects(from: newTweets)
+            
+            let redditPostsMO = newTopic.mutableSetValue(forKey: "redditPosts")
+            redditPostsMO.addObjects(from: newRedditPosts)
 
             do {
                 try newTopic.managedObjectContext?.save()
@@ -175,15 +181,24 @@ class AddTopicViewController: UIViewController {
                     twitterAPI.tweetInfo(id: stringID) { (tweet) in
                         self.content.append(tweet)
                         
-
                         DispatchQueue.main.async {
                             self.tableView.reloadData()
                         }
                     }
                 }
             } else if text.contains("reddit.com") {
+                let split = text.components(separatedBy: "/")
+                let postID = split[split.count-3]
                 
+                redditAPI.postData(postID: postID) { (post) in
+                    self.content.append(post)
+                    
+                    DispatchQueue.main.async {
+                        self.tableView.reloadData()
+                    }
+                }
             }
+            
             contentURLField.text = ""
             self.view.endEditing(true)
         }
@@ -202,6 +217,10 @@ extension AddTopicViewController: UITableViewDelegate, UITableViewDataSource {
             let cell = tableView.dequeueReusableCell(withIdentifier: "TweetCell") as! TweetCell
             cell.configure(tweet: tweet)
             return cell
+        } else if let post = content[indexPath.row] as? RedditPost {
+            let cell = tableView.dequeueReusableCell(withIdentifier: "RedditPostCell") as! RedditPostCell
+            cell.configure(post: post)
+            return cell
         }
         return UITableViewCell()
     }
@@ -214,6 +233,8 @@ extension AddTopicViewController: UITableViewDelegate, UITableViewDataSource {
         
         if let tweet = content[indexPath.row] as? Tweet {
             label.text = tweet.text
+        } else if let redditPost = content[indexPath.row] as? RedditPost {
+            label.text = redditPost.title
         }
         label.sizeToFit()
         

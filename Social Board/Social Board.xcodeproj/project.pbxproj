@@ -22,6 +22,8 @@
 		353D02AB262D7E6F00D904AE /* TweetMO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353D02AA262D7E6F00D904AE /* TweetMO.swift */; };
 		353D02B3262D7E7B00D904AE /* TopicMO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353D02B2262D7E7B00D904AE /* TopicMO.swift */; };
 		353D02B82635F49300D904AE /* Keys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353D02B72635F49300D904AE /* Keys.swift */; };
+		35C0179C2640D21600D77CFD /* RedditPostMO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C0179B2640D21600D77CFD /* RedditPostMO.swift */; };
+		35C017A42642268400D77CFD /* RedditPostCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C017A32642268400D77CFD /* RedditPostCell.swift */; };
 		35C4A064262203FD00E6A6B0 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C4A063262203FD00E6A6B0 /* AppDelegate.swift */; };
 		35C4A066262203FD00E6A6B0 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C4A065262203FD00E6A6B0 /* SceneDelegate.swift */; };
 		35C4A06E262203FD00E6A6B0 /* Social_Board.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 35C4A06C262203FD00E6A6B0 /* Social_Board.xcdatamodeld */; };
@@ -70,6 +72,8 @@
 		353D02AA262D7E6F00D904AE /* TweetMO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TweetMO.swift; sourceTree = "<group>"; };
 		353D02B2262D7E7B00D904AE /* TopicMO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicMO.swift; sourceTree = "<group>"; };
 		353D02B72635F49300D904AE /* Keys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keys.swift; sourceTree = "<group>"; };
+		35C0179B2640D21600D77CFD /* RedditPostMO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedditPostMO.swift; sourceTree = "<group>"; };
+		35C017A32642268400D77CFD /* RedditPostCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedditPostCell.swift; sourceTree = "<group>"; };
 		35C4A060262203FD00E6A6B0 /* Social Board.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Social Board.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		35C4A063262203FD00E6A6B0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		35C4A065262203FD00E6A6B0 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -159,6 +163,7 @@
 			children = (
 				353D02AA262D7E6F00D904AE /* TweetMO.swift */,
 				353D02B2262D7E7B00D904AE /* TopicMO.swift */,
+				35C0179B2640D21600D77CFD /* RedditPostMO.swift */,
 			);
 			path = "Managed Objects";
 			sourceTree = "<group>";
@@ -224,6 +229,7 @@
 			children = (
 				351CA80126222831005A1C3D /* TopicTagCell.swift */,
 				351CA8062622284F005A1C3D /* TweetCell.swift */,
+				35C017A32642268400D77CFD /* RedditPostCell.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -511,10 +517,12 @@
 			files = (
 				353D02B3262D7E7B00D904AE /* TopicMO.swift in Sources */,
 				35E614A0262209A900E4E82D /* HomeViewController.swift in Sources */,
+				35C0179C2640D21600D77CFD /* RedditPostMO.swift in Sources */,
 				351CA80C26222AEB005A1C3D /* Topic.swift in Sources */,
 				353D023626278B3600D904AE /* TwitterAPI.swift in Sources */,
 				353D02432627926E00D904AE /* Tweets.swift in Sources */,
 				351CA811262296CE005A1C3D /* AddTopicViewController.swift in Sources */,
+				35C017A42642268400D77CFD /* RedditPostCell.swift in Sources */,
 				353D02AB262D7E6F00D904AE /* TweetMO.swift in Sources */,
 				351CA81B262356B3005A1C3D /* Tweet.swift in Sources */,
 				351CA81626235591005A1C3D /* Content.swift in Sources */,
